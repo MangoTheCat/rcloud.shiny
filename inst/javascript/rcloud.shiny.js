@@ -2,14 +2,22 @@
 
 var sockets_ = [];
 var ocaps_ = null;
+var SHINY_HTML_LOCATION = 'shared.R/rcloud.shiny/shiny.html';
+var debugEnabled = false;
+
+function debug(msg, arg) {
+  if(debugEnabled) {
+    console.debug(msg, arg);
+  }
+}
 
 function fakeWebSocket() {
     var fws = {
         readyState: false,
         send: function(msg) {
-            console.log("client to Shiny: ", arguments);
+            debug("client to Shiny: ", arguments);
             ocaps_.sendAsync(id, msg).then(function(response) {
-                console.log("Shiny response: ", response);
+                debug("Shiny response: ", response);
             });
         }
     };
@@ -23,24 +31,37 @@ function fakeWebSocket() {
     return fws;
 }
 
+function isMini() {
+  return window.document.location.pathname.endsWith(SHINY_HTML_LOCATION);
+}
+
 return {
     init: function(ocaps, k) {
-        ocaps_ = RCloud.promisify_paths(ocaps, [["connect"], ["send"]]);
-        window.Shiny = {
+        if(isMini()) {
+          ocaps_ = RCloud.promisify_paths(ocaps, [["connect"], ["send"]]);
+          window.Shiny = {
             createSocket: function() {
                 return fakeWebSocket();
             }
-        };
+          };
+        } else {
+          RCloud.UI.share_button.add({ 
+                  'shiny.html': {
+                      sort: 4000,
+                      page: SHINY_HTML_LOCATION
+                  }
+          });
+        }
         k();
     },
     on_message: function(id, msg, k) {
-        console.log("Shiny to client: ", msg);
+        debug("Shiny to client: ", msg);
         if(_.isArray(msg)) {
             // looks like shiny switched json libraries and now they're sending objects
             // instead of pseudo-scalars
-            if(msg.length > 1) console.log('rcloud.shiny: whoops, more than one element?');
+            if(msg.length > 1) console.warning('rcloud.shiny: whoops, more than one element?');
             msg = msg[0];
-        };
+        }
         msg = msg.replace(/shared\//g,'shared.R/shiny/shared/');
         sockets_[0].onmessage({data:msg});
         k();

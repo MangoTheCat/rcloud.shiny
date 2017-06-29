@@ -54,13 +54,13 @@ rcloud.shinyApp <- function(ui, server, options) {
     #rcloud.print(paste("shiny message ", msg))
     onMessageHandler(FALSE, msg)
   }
-
+  
   ocaps <- list(
     connect = rcloud.support:::make.oc(connect),
     send = rcloud.support:::make.oc(receive)
   );
-
   rcloud.shiny.caps$init(ocaps);
+  
   serverFuncSource <- function() {
     server
   }
